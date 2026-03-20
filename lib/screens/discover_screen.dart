@@ -236,10 +236,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
                   /// TITLE
                   Positioned(
-                    left: 0,
-                    right: 0,
+                    left: 8,
+                    right: 8,
                     bottom: 16,
-                    child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
                       child: ShaderMask(
                         shaderCallback: (bounds) => const LinearGradient(
                           colors: [Colors.white, Color(0xFFE28B9B)],
@@ -248,6 +249,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         ).createShader(bounds),
                         child: Text(
                           title,
+                          maxLines: 1,
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,

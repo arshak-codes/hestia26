@@ -37,9 +37,13 @@ class HestiaApp extends StatelessWidget {
       title: 'Hestia App',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: scaffoldMessengerKey,
+      builder: (context, child) {
+        return StarryBackground(child: child);
+      },
       theme: ThemeData(
+        fontFamily: 'Urbanist',
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0C0C0E),
+        scaffoldBackgroundColor: Colors.transparent,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -51,11 +55,14 @@ class HestiaApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
           ),
+        textTheme: ThemeData.dark().textTheme.copyWith(
+          displayLarge: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
         ),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFE28B9B),
           secondary: Color(0xFF9070E0),
           surface: Color(0xFF0C0C0E),
+          background: Colors.transparent,
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Color(0xFF131316),
