@@ -95,11 +95,11 @@ class StarPainter extends CustomPainter {
       final baseOpacity = (opacity * 0.7 + 0.1).clamp(0.0, 1.0);
       
       if (star.size > 2.0) {
-         paint.color = const Color(0xFFE28B9B).withOpacity(baseOpacity);
+         paint.color = const Color(0xFFE28B9B).withValues(alpha: baseOpacity);
       } else if (star.size > 1.5) {
-         paint.color = const Color(0xFF9070E0).withOpacity(baseOpacity);
+         paint.color = const Color(0xFF9070E0).withValues(alpha: baseOpacity);
       } else {
-         paint.color = Colors.white.withOpacity(baseOpacity);
+         paint.color = Colors.white.withValues(alpha: baseOpacity);
       }
       
       canvas.drawCircle(

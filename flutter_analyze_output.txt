@@ -1,0 +1,17 @@
+Analyzing hestia26...                                           
+
+  error - The named parameter 'textTheme' isn't defined - lib\main.dart:58:9 - undefined_named_parameter
+  error - The named parameter 'colorScheme' isn't defined - lib\main.dart:61:9 - undefined_named_parameter
+   info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\main.dart:65:11 - deprecated_member_use
+  error - The named parameter 'bottomNavigationBarTheme' isn't defined - lib\main.dart:67:9 - undefined_named_parameter
+  error - The named parameter 'home' isn't defined - lib\main.dart:74:7 - undefined_named_parameter
+  error - Expected to find ')' - lib\main.dart:75:6 - expected_token
+warning - Unused import: 'highlight_story_screen.dart' - lib\screens\discover_screen.dart:5:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\discover_screen.dart:228:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\general_screen.dart:67:61 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\general_screen.dart:70:46 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\main_screen.dart:39:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\starry_background.dart:98:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\starry_background.dart:100:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\starry_background.dart:102:37 - deprecated_member_use
+

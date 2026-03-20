@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:hestia26/widgets/starry_background.dart';
 import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'services/notification_service.dart';
@@ -55,14 +55,11 @@ class HestiaApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
           ),
-        textTheme: ThemeData.dark().textTheme.copyWith(
-          displayLarge: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
         ),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFE28B9B),
           secondary: Color(0xFF9070E0),
           surface: Color(0xFF0C0C0E),
-          background: Colors.transparent,
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Color(0xFF131316),

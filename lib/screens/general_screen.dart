@@ -64,10 +64,10 @@ class _GeneralScreenState extends State<GeneralScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF131316),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE28B9B).withOpacity(0.5), width: 1),
+          border: Border.all(color: const Color(0xFFE28B9B).withValues(alpha: 0.5), width: 1),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE28B9B).withOpacity(0.1),
+              color: const Color(0xFFE28B9B).withValues(alpha: 0.1),
               blurRadius: 20,
               spreadRadius: -5,
             )

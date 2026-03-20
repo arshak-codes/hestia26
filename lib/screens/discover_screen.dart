@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../widgets/custom_app_bar.dart';
 import 'general_screen.dart';
-import 'highlight_story_screen.dart';
-
 import '../models/event.dart';
 import '../services/api_service.dart';
 
@@ -225,7 +223,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       gradient: LinearGradient(
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.8)
+                          Colors.black.withValues(alpha: 0.8)
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
