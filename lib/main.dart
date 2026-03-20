@@ -1,19 +1,42 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
-import 'widgets/starry_background.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-void main() {
-  runApp(const HestiaApp());
+import 'firebase_options.dart';
+import 'screens/splash_screen.dart';
+import 'services/notification_service.dart';
+
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await NotificationService.instance.initialize(
+    scaffoldMessengerKey: rootScaffoldMessengerKey,
+  );
+  runApp(HestiaApp(scaffoldMessengerKey: rootScaffoldMessengerKey));
 }
 
 class HestiaApp extends StatelessWidget {
-  const HestiaApp({super.key});
+  const HestiaApp({super.key, this.home, this.scaffoldMessengerKey});
+
+  final Widget? home;
+  final GlobalKey<ScaffoldMessengerState>? scaffoldMessengerKey;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Hestia App',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       builder: (context, child) {
         return StarryBackground(child: child);
       },
@@ -25,12 +48,20 @@ class HestiaApp extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
+        textTheme: GoogleFonts.outfitTextTheme(
+          ThemeData.dark().textTheme,
+        ).copyWith(
+          displayLarge: GoogleFonts.outfit(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+          ),
         textTheme: ThemeData.dark().textTheme.copyWith(
           displayLarge: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.5),
         ),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFE28B9B),
           secondary: Color(0xFF9070E0),
+          surface: Color(0xFF0C0C0E),
           background: Colors.transparent,
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -40,7 +71,7 @@ class HestiaApp extends StatelessWidget {
           type: BottomNavigationBarType.fixed,
         ),
       ),
-      home: const SplashScreen(),
+      home: home ?? const SplashScreen(),
     );
   }
 }
