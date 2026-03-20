@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'discover_screen.dart';
 import 'schedule_screen.dart';
 import 'highlights_screen.dart';
+import 'map_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -16,6 +17,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _pages = [
     const DiscoverScreen(),
     const HighlightsScreen(),
+    const MapScreen(),
     const ScheduleScreen(),
   ];
 
@@ -56,7 +58,8 @@ class _MainScreenState extends State<MainScreen> {
             items: [
               _buildBottomNavItem(Icons.home_outlined, 0),
               _buildBottomNavItem(Icons.star_border, 1),
-              _buildBottomNavItem(Icons.calendar_month_outlined, 2),
+              _buildBottomNavItem(Icons.explore_outlined, 2),
+              _buildBottomNavItem(Icons.calendar_month_outlined, 3),
             ],
           ),
         ),
@@ -80,11 +83,7 @@ class _MainScreenState extends State<MainScreen> {
             end: Alignment.bottomRight,
           ).createShader(bounds);
         },
-        child: Icon(
-          icon,
-          size: 30,
-          color: Colors.white,
-        ),
+        child: Icon(icon, size: 30, color: Colors.white),
       ),
       label: '',
     );

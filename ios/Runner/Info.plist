@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We use your location to guide you to campus events on the fantasy map.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
