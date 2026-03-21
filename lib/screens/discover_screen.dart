@@ -4,6 +4,7 @@ import '../widgets/custom_app_bar.dart';
 import 'general_screen.dart';
 import '../models/event.dart';
 import '../services/api_service.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
@@ -113,20 +114,33 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 final categories = groupedEvents.keys.toList();
 
                 return AnimationLimiter(
-                  child: GridView.builder(
+                  child: MasonryGridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.85,
-                    ),
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
                     itemCount: categories.length,
                     itemBuilder: (context, index) {
                       final category = categories[index];
                       final events = groupedEvents[category]!;
                       final coverImage = events.isNotEmpty ? events.first.image : 'assets/dummy.png';
+
+                      // Determine dynamic height to comfortably fit text and guarantee masonry stagger
+                      double cardHeight = 160.0;
+                      if (category.toUpperCase() == 'PROSHOWS') {
+                        cardHeight = 280.0;
+                      } else if (category.toUpperCase() == 'WORKSHOPS') {
+                        cardHeight = 180.0;
+                      } else if (category.toUpperCase() == 'INFORMALS') {
+                        cardHeight = 180.0;
+                      } else if (category.toUpperCase() == 'GENERAL') {
+                        cardHeight = 280.0;
+                      } else if (category.length > 10) {
+                        cardHeight = 320.0; // Much larger height for wrapping text (e.g. COMPETITIONS)
+                      } else {
+                        cardHeight = 220.0;
+                      }
 
                       return AnimationConfiguration.staggeredGrid(
                         position: index,
@@ -135,21 +149,24 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         child: SlideAnimation(
                           verticalOffset: 50.0,
                           child: FadeInAnimation(
-                            child: _buildCategoryCard(
-                              context,
-                              title: category.toUpperCase(),
-                              imageUrl: coverImage,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => GeneralScreen(
-                                      categoryName: category,
-                                      events: events,
+                            child: SizedBox(
+                              height: cardHeight,
+                              child: _buildCategoryCard(
+                                context,
+                                title: category.toUpperCase(),
+                                imageUrl: coverImage,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => GeneralScreen(
+                                        categoryName: category,
+                                        events: events,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ),
@@ -237,23 +254,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     left: 8,
                     right: 8,
                     bottom: 16,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [Colors.white, Color(0xFFE28B9B)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ).createShader(bounds),
-                        child: Text(
-                          title,
-                          maxLines: 1,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                            color: Colors.white,
-                          ),
+                    child: ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [Colors.white, Color(0xFFE28B9B)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ).createShader(bounds),
+                      child: Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                          color: Colors.white,
                         ),
                       ),
                     ),
