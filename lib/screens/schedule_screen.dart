@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/schedule_event.dart';
 import '../services/schedule_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/hestia_loader.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -31,7 +32,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           if (!daySnapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFE28B9B)),
+              child: HestiaLoader(label: 'Loading schedule'),
             );
           }
 
@@ -116,9 +117,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
                     if (!eventSnapshot.hasData) {
                       return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFE28B9B),
-                        ),
+                        child: HestiaLoader(label: 'Loading events'),
                       );
                     }
 
