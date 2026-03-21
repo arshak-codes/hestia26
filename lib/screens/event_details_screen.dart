@@ -7,34 +7,96 @@ class EventDetailsScreen extends StatelessWidget {
 
   const EventDetailsScreen({super.key, required this.event});
 
+  static const List<String> _monthLabels = [
+    'JAN',
+    'FEB',
+    'MAR',
+    'APR',
+    'MAY',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OCT',
+    'NOV',
+    'DEC',
+  ];
+
+  DateTime? _parseEventDate(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return null;
+    }
+
+    final directParse = DateTime.tryParse(value);
+    if (directParse != null) {
+      return directParse;
+    }
+
+    final normalized = value.replaceAll(',', ' ').replaceAll(RegExp(r'\s+'), ' ');
+
+    final monthNameMatch = RegExp(
+      r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b[^\d]*(\d{1,2})(?:[^\d]+(\d{4}))?',
+      caseSensitive: false,
+    ).firstMatch(normalized);
+    if (monthNameMatch != null) {
+      final monthToken = (monthNameMatch.group(1) ?? '').toLowerCase();
+      final day = int.tryParse(monthNameMatch.group(2) ?? '');
+      final year =
+          int.tryParse(monthNameMatch.group(3) ?? '') ?? DateTime.now().year;
+      final monthIndex = const {
+        'jan': 1,
+        'feb': 2,
+        'mar': 3,
+        'apr': 4,
+        'may': 5,
+        'jun': 6,
+        'jul': 7,
+        'aug': 8,
+        'sep': 9,
+        'oct': 10,
+        'nov': 11,
+        'dec': 12,
+      }[monthToken];
+      if (monthIndex != null && day != null) {
+        return DateTime(year, monthIndex, day);
+      }
+    }
+
+    final slashOrDashMatch = RegExp(
+      r'\b(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})\b',
+    ).firstMatch(normalized);
+    if (slashOrDashMatch != null) {
+      final first = int.tryParse(slashOrDashMatch.group(1) ?? '');
+      final second = int.tryParse(slashOrDashMatch.group(2) ?? '');
+      final third = int.tryParse(slashOrDashMatch.group(3) ?? '');
+      if (first != null && second != null && third != null) {
+        if (first > 999) {
+          return DateTime(first, second, third);
+        }
+        if (third > 999) {
+          return DateTime(third, second, first);
+        }
+      }
+    }
+
+    return null;
+  }
+
   String _getMonth(String dateStr) {
-    if (dateStr.isEmpty) return 'MAR';
-    final lower = dateStr.toLowerCase();
-    if (lower.contains('jan')) return 'JAN';
-    if (lower.contains('feb')) return 'FEB';
-    if (lower.contains('mar')) return 'MAR';
-    if (lower.contains('apr')) return 'APR';
-    if (lower.contains('may')) return 'MAY';
-    if (lower.contains('jun')) return 'JUN';
-    if (lower.contains('jul')) return 'JUL';
-    if (lower.contains('aug')) return 'AUG';
-    if (lower.contains('sep')) return 'SEP';
-    if (lower.contains('oct')) return 'OCT';
-    if (lower.contains('nov')) return 'NOV';
-    if (lower.contains('dec')) return 'DEC';
-    try {
-      final parsed = DateTime.parse(dateStr);
-      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-      return months[parsed.month - 1];
-    } catch (_) {}
-    return 'DATE';
+    final parsed = _parseEventDate(dateStr);
+    if (parsed == null) {
+      return 'DATE';
+    }
+    return _monthLabels[parsed.month - 1];
   }
 
   String _getDay(String dateStr) {
-    if (dateStr.isEmpty) return '23';
-    final match = RegExp(r'\b(\d{1,2})\b').firstMatch(dateStr);
-    if (match != null) return match.group(0)!;
-    return '23';
+    final parsed = _parseEventDate(dateStr);
+    if (parsed == null) {
+      return '--';
+    }
+    return parsed.day.toString().padLeft(2, '0');
   }
 
   @override
