@@ -18,6 +18,23 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
+  static const Map<String, String> _categoryCoverImages = {
+    'HIWAGA':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084903/652506440_18175545709385155_3828022829328088871_n.jpg_jzk2r7.jpg',
+    'INFORMALS':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084905/informals.jpg_cjtjhh.jpg',
+    'SPORTS':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084973/sports.jpg_om0kdk.jpg',
+    'CULTURALS':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084973/culturals.jpg_jqujop.jpg',
+    'COMPETITIONS':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084972/competitions.jpg_yhd7pe.jpg',
+    'PROSHOWS':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084905/proshows_mxfpeo.png',
+    'WORKSHOPS':
+        'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084904/workshops.jpg_aopfru.jpg',
+  };
+
   late Future<Map<String, List<Event>>> _eventsFuture;
   final SliderService _sliderService = SliderService();
 
@@ -171,7 +188,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     itemBuilder: (context, index) {
                       final category = categories[index];
                       final events = groupedEvents[category]!;
-                      final coverImage = events.isNotEmpty ? events.first.image : 'assets/dummy.png';
+                      final coverImage =
+                          _categoryCoverImages[category.toUpperCase()] ??
+                          (events.isNotEmpty ? events.first.image : 'assets/dummy.png');
 
                       // Determine dynamic height to comfortably fit text and guarantee masonry stagger
                       double cardHeight = 160.0;

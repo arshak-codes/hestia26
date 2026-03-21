@@ -135,7 +135,7 @@ class _MapScreenState extends State<MapScreen>
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: _buildControlPanel(
                 startPoint,
                 destination,
@@ -143,9 +143,9 @@ class _MapScreenState extends State<MapScreen>
                 usesEntranceStart: usesEntranceStart,
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             SizedBox(
-              height: 70,
+              height: 52,
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 scrollDirection: Axis.horizontal,
@@ -167,6 +167,7 @@ class _MapScreenState extends State<MapScreen>
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.black : Colors.white70,
                       fontWeight: FontWeight.w600,
+                      fontSize: 12,
                     ),
                     side: BorderSide(
                       color: isSelected ? Colors.transparent : Colors.white12,
@@ -175,34 +176,34 @@ class _MapScreenState extends State<MapScreen>
                       borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
+                      horizontal: 11,
+                      vertical: 6,
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
             Expanded(
               child: FutureBuilder<_SvgAssetData>(
                 future: _svgAssetFuture,
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
                       child: _MapLoadFallback(),
                     );
                   }
 
                   if (!snapshot.hasData) {
                     return const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
                       child: Center(child: HestiaLoader(label: 'Loading map')),
                     );
                   }
 
                   return Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
                     child: AnimatedBuilder(
                       animation: _pulseController,
                       builder: (context, _) {
@@ -245,10 +246,10 @@ class _MapScreenState extends State<MapScreen>
             : 'Using Main Entrance as the start marker.';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF141417),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.white12),
       ),
       child: Column(
@@ -261,7 +262,7 @@ class _MapScreenState extends State<MapScreen>
                   'Campus Navigator',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -283,16 +284,16 @@ class _MapScreenState extends State<MapScreen>
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             subtitle,
             style: const TextStyle(
               color: Colors.white60,
-              fontSize: 13,
+              fontSize: 11,
               height: 1.45,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
@@ -302,7 +303,7 @@ class _MapScreenState extends State<MapScreen>
                   color: const Color(0xFF5EEAD4),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: _RouteLegend(
                   title: 'Destination',
@@ -312,12 +313,12 @@ class _MapScreenState extends State<MapScreen>
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           Text(
             'Anchored to the TKMCE campus map from '
             '${startPoint.latitude.toStringAsFixed(5)}, '
             '${startPoint.longitude.toStringAsFixed(5)}.',
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
+            style: const TextStyle(color: Colors.white38, fontSize: 10),
           ),
         ],
       ),
@@ -421,45 +422,6 @@ class _CampusSvgMapCard extends StatelessWidget {
                               selectedVenue: selectedVenue,
                               pulseValue: pulseValue,
                               hasPreciseLocation: hasPreciseLocation,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 18,
-                          left: 18,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.66),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'TKMCE CAMPUS MAP',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.2,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  usesEntranceStart
-                                      ? 'Starting from Main Entrance'
-                                      : 'Pinch to zoom and inspect venues',
-                                  style: TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
                             ),
                           ),
                         ),
@@ -700,7 +662,7 @@ class _RouteLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: const Color(0xFF0E0E10),
         borderRadius: BorderRadius.circular(18),
@@ -720,7 +682,7 @@ class _RouteLegend extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  style: const TextStyle(color: Colors.white54, fontSize: 10),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -728,7 +690,7 @@ class _RouteLegend extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: 12,
                   ),
                 ),
               ],
