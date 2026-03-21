@@ -1,3 +1,17 @@
+class EventCoordinator {
+  final String name;
+  final String phone;
+
+  EventCoordinator({required this.name, required this.phone});
+
+  factory EventCoordinator.fromJson(Map<String, dynamic> json) {
+    return EventCoordinator(
+      name: json['name'] ?? '',
+      phone: json['phone'] ?? '',
+    );
+  }
+}
+
 class Event {
   final String id;
   final String slug;
@@ -13,6 +27,7 @@ class Event {
   final String registrationLink;
   final String instagram;
   final String category;
+  final List<EventCoordinator> coordinators;
 
   Event({
     required this.id,
@@ -29,6 +44,7 @@ class Event {
     required this.registrationLink,
     required this.instagram,
     required this.category,
+    required this.coordinators,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -47,6 +63,11 @@ class Event {
       registrationLink: json['registrationLink'] ?? '',
       instagram: json['instagram'] ?? '',
       category: json['category'] ?? '',
+      coordinators: json['coordinators'] != null
+          ? (json['coordinators'] as List<dynamic>)
+              .map((e) => EventCoordinator.fromJson(e as Map<String, dynamic>))
+              .toList()
+          : <EventCoordinator>[],
     );
   }
 }

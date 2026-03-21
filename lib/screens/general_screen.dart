@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/custom_app_bar.dart';
 import '../models/event.dart';
+import 'event_details_screen.dart';
 
 class GeneralScreen extends StatefulWidget {
   final String categoryName;
@@ -78,22 +79,32 @@ class _GeneralScreenState extends State<GeneralScreen> {
           children: [
             // Image Section
             Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF2A2E45),
-                ),
-                child: Image.network(
-                  event.image,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                       color: const Color(0xFF2A2E45),
-                       child: const Center(
-                         child: Icon(Icons.event, size: 80, color: Colors.white24),
-                       ),
-                    );
-                  },
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EventDetailsScreen(event: event),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF2A2E45),
+                  ),
+                  child: Image.network(
+                    event.image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                         color: const Color(0xFF2A2E45),
+                         child: const Center(
+                           child: Icon(Icons.event, size: 80, color: Colors.white24),
+                         ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -134,21 +145,13 @@ class _GeneralScreenState extends State<GeneralScreen> {
                         border: Border.all(color: Colors.white24),
                       ),
                       child: ElevatedButton(
-                        onPressed: () async {
-                          String link = event.registrationLink;
-                          if (!link.startsWith('http://') && !link.startsWith('https://')) {
-                            link = 'https://$link';
-                          }
-                          final url = Uri.parse(link);
-                          try {
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(url, mode: LaunchMode.externalApplication);
-                            } else {
-                              await launchUrl(url, mode: LaunchMode.externalApplication);
-                            }
-                          } catch (e) {
-                            debugPrint('Could not launch $link: $e');
-                          }
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailsScreen(event: event),
+                            ),
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
