@@ -56,8 +56,13 @@ class _HighlightsScreenState extends State<HighlightsScreen> {
                   duration: const Duration(milliseconds: 450),
                   child: SlideAnimation(
                     verticalOffset: 36,
-                    child: FadeInAnimation(
-                      child: _buildHighlightCard(context, highlight: highlight),
+                      child: FadeInAnimation(
+                      child: _buildHighlightCard(
+                        context,
+                        highlights: highlights,
+                        highlight: highlight,
+                        index: index,
+                      ),
                     ),
                   ),
                 );
@@ -71,13 +76,19 @@ class _HighlightsScreenState extends State<HighlightsScreen> {
 
   Widget _buildHighlightCard(
     BuildContext context, {
+    required List<HighlightItem> highlights,
     required HighlightItem highlight,
+    required int index,
   }) {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => HighlightStoryScreen(highlight: highlight),
+            builder:
+                (_) => HighlightStoryScreen(
+                  highlights: highlights,
+                  initialIndex: index,
+                ),
           ),
         );
       },

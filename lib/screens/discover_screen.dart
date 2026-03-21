@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+
+import '../models/slider_image.dart';
+import '../services/slider_service.dart';
 import '../widgets/custom_app_bar.dart';
 import 'general_screen.dart';
 import '../models/event.dart';
@@ -15,6 +18,7 @@ class DiscoverScreen extends StatefulWidget {
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
   late Future<Map<String, List<Event>>> _eventsFuture;
+  final SliderService _sliderService = SliderService();
 
   @override
   void initState() {
@@ -33,40 +37,77 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           children: [
 
             /// POSTERS CAROUSEL
-            TweenAnimationBuilder(
-              duration: const Duration(milliseconds: 600),
-              tween: Tween<double>(begin: 0, end: 1),
-              builder: (context, double value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: SizedBox(
+            StreamBuilder<List<SliderImage>>(
+              stream: _sliderService.streamSliders(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const SizedBox(
                     height: 180,
-                    child: PageView.builder(
-                      controller: PageController(viewportFraction: 0.95),
-                      itemCount: 3,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: const Color(0xFF1B1B1D),
-                            ),
-                            clipBehavior: Clip.hardEdge,
-                            child: Image.asset(
-                              'assets/dummy.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Center(
-                                  child: Text('POSTER HERE', style: TextStyle(color: Colors.white54)),
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      },
+                    child: Center(
+                      child: CircularProgressIndicator(color: Color(0xFFE28B9B)),
                     ),
-                  ),
+                  );
+                }
+
+                final sliderImages = snapshot.data!;
+                if (sliderImages.isEmpty) {
+                  return const SizedBox(
+                    height: 180,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Color(0xFF1B1B1D),
+                        borderRadius: BorderRadius.all(Radius.circular(16)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No slider images found',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return TweenAnimationBuilder(
+                  duration: const Duration(milliseconds: 600),
+                  tween: Tween<double>(begin: 0, end: 1),
+                  builder: (context, double value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: SizedBox(
+                        height: 180,
+                        child: PageView.builder(
+                          controller: PageController(viewportFraction: 0.95),
+                          itemCount: sliderImages.length,
+                          itemBuilder: (context, index) {
+                            final sliderImage = sliderImages[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16),
+                                  color: const Color(0xFF1B1B1D),
+                                ),
+                                clipBehavior: Clip.hardEdge,
+                                child: Image.network(
+                                  sliderImage.link,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Center(
+                                      child: Text(
+                                        'POSTER UNAVAILABLE',
+                                        style: TextStyle(color: Colors.white54),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
