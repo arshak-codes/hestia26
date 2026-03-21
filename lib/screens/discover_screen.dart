@@ -37,6 +37,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         'https://res.cloudinary.com/dtnvnsyxw/image/upload/v1774084904/workshops.jpg_aopfru.jpg',
   };
 
+  static const Map<String, double> _categoryCardHeights = {
+    'PROSHOWS': 190,
+    'INFORMALS': 160,
+    'HIWAGA': 300,
+    'COMPETITIONS': 320,
+    'SPORTS': 260,
+    'CULTURALS': 230,
+    'WORKSHOPS': 180,
+    'GENERAL': 300,
+  };
+
   late Future<Map<String, List<Event>>> _eventsFuture;
   final SliderService _sliderService = SliderService();
   late final PageController _sliderPageController;
@@ -225,22 +236,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       final coverImage =
                           _categoryCoverImages[category.toUpperCase()] ??
                           (events.isNotEmpty ? events.first.image : 'assets/dummy.png');
-
-                      // Determine dynamic height to comfortably fit text and guarantee masonry stagger
-                      double cardHeight = 160.0;
-                      if (category.toUpperCase() == 'PROSHOWS') {
-                        cardHeight = 280.0;
-                      } else if (category.toUpperCase() == 'WORKSHOPS') {
-                        cardHeight = 180.0;
-                      } else if (category.toUpperCase() == 'INFORMALS') {
-                        cardHeight = 180.0;
-                      } else if (category.toUpperCase() == 'GENERAL') {
-                        cardHeight = 280.0;
-                      } else if (category.length > 10) {
-                        cardHeight = 280.0; // Standard tall height since text shrinks
-                      } else {
-                        cardHeight = 220.0;
-                      }
+                      final cardHeight = _cardHeightForCategory(
+                        category.toUpperCase(),
+                        index,
+                      );
 
                       return AnimationConfiguration.staggeredGrid(
                         position: index,
@@ -382,5 +381,18 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ),
     );
+  }
+
+  double _cardHeightForCategory(String category, int index) {
+    final mappedHeight = _categoryCardHeights[category];
+    if (mappedHeight != null) {
+      return mappedHeight;
+    }
+
+    if (category.length > 10) {
+      return index.isEven ? 300 : 220;
+    }
+
+    return index.isEven ? 250 : 185;
   }
 }
