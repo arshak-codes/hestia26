@@ -131,7 +131,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
                       itemCount: events.length,
                       itemBuilder: (context, index) {
                         final event = events[index];
@@ -141,7 +141,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 100),
             ],
           );
         },
