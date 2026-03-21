@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../models/highlight_item.dart';
+import '../widgets/hestia_loader.dart';
 
 class HighlightStoryScreen extends StatefulWidget {
   const HighlightStoryScreen({
@@ -71,15 +72,7 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen>
       return;
     }
 
-    if (_currentIndex >= widget.highlights.length - 1) {
-      Navigator.of(context).maybePop();
-      return;
-    }
-
-    _pageController.nextPage(
-      duration: _pageTransitionDuration,
-      curve: Curves.easeInOutCubic,
-    );
+    _showNextHighlight();
   }
 
   void _handleVideoReady(int index, Duration duration) {
@@ -96,6 +89,41 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen>
 
   void _handleVideoCompleted(int index) {
     _handleStoryFinished(index);
+  }
+
+  void _showPreviousHighlight() {
+    if (_currentIndex <= 0) {
+      _startCurrentHighlight();
+      return;
+    }
+
+    _pageController.previousPage(
+      duration: _pageTransitionDuration,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _showNextHighlight() {
+    if (_currentIndex >= widget.highlights.length - 1) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    _pageController.nextPage(
+      duration: _pageTransitionDuration,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _handleTapNavigation(TapUpDetails details) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final tapX = details.globalPosition.dx;
+
+    if (tapX < screenWidth / 2) {
+      _showPreviousHighlight();
+    } else {
+      _showNextHighlight();
+    }
   }
 
   @override
@@ -123,6 +151,12 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen>
                 ),
               );
             },
+          ),
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapUp: _handleTapNavigation,
+            ),
           ),
           Positioned(
             top: 24,
@@ -179,9 +213,14 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen>
                   Container(
                     width: 40,
                     height: 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF9070E0),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Image.asset(
+                      'assets/hestia-logo-final-1.png',
+                      fit: BoxFit.cover,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -385,7 +424,7 @@ class _HighlightStoryPageState extends State<_HighlightStoryPage> {
     final controller = _videoController;
     if (controller == null || !controller.value.isInitialized) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE28B9B)),
+        child: HestiaLoader(size: 52, label: 'Loading story'),
       );
     }
 

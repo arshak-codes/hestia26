@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 import '../models/highlight_item.dart';
 import '../services/highlights_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/hestia_loader.dart';
 import 'highlight_story_screen.dart';
 
 class HighlightsScreen extends StatefulWidget {
@@ -33,7 +34,7 @@ class _HighlightsScreenState extends State<HighlightsScreen> {
 
           if (!snapshot.hasData) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFE28B9B)),
+              child: HestiaLoader(label: 'Loading highlights'),
             );
           }
 
@@ -294,7 +295,7 @@ class _HighlightVideoPreviewState extends State<_HighlightVideoPreview> {
       return Container(
         color: const Color(0xFF1B1B1D),
         child: const Center(
-          child: CircularProgressIndicator(color: Color(0xFFE28B9B)),
+          child: HestiaLoader(size: 52, label: 'Loading media'),
         ),
       );
     }
