@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../widgets/custom_app_bar.dart';
+import '../widgets/hestia_loader.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -226,7 +227,7 @@ class _MapScreenState extends State<MapScreen>
                         ? const SizedBox(
                           width: 14,
                           height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: HestiaLoader(size: 14, compact: true),
                         )
                         : const Icon(Icons.my_location_rounded, size: 18),
                 label: const Text('Locate Me'),

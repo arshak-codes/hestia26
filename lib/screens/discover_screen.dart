@@ -4,6 +4,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../models/slider_image.dart';
 import '../services/slider_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/hestia_loader.dart';
 import 'general_screen.dart';
 import '../models/event.dart';
 import '../services/api_service.dart';
@@ -44,7 +45,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   return const SizedBox(
                     height: 180,
                     child: Center(
-                      child: CircularProgressIndicator(color: Color(0xFFE28B9B)),
+                      child: HestiaLoader(
+                        size: 42,
+                        label: 'Loading highlights',
+                      ),
                     ),
                   );
                 }
@@ -140,7 +144,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               future: _eventsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Color(0xFFE28B9B)));
+                  return const Center(
+                    child: HestiaLoader(label: 'Loading events'),
+                  );
                 } else if (snapshot.hasError) {
                   return Center(
                     child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white54)),
