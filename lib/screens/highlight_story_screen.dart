@@ -17,8 +17,13 @@ class HighlightStoryScreen extends StatefulWidget {
   State<HighlightStoryScreen> createState() => _HighlightStoryScreenState();
 }
 
-class _HighlightStoryScreenState extends State<HighlightStoryScreen> {
+class _HighlightStoryScreenState extends State<HighlightStoryScreen>
+    with SingleTickerProviderStateMixin {
+  static const Duration _photoDisplayDuration = Duration(seconds: 15);
+  static const Duration _pageTransitionDuration = Duration(milliseconds: 420);
+
   late final PageController _pageController;
+  late final AnimationController _progressController;
   late int _currentIndex;
 
   @override
@@ -26,12 +31,71 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+    _progressController = AnimationController(vsync: this)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          _handleStoryFinished(_currentIndex);
+        }
+      });
+    _startCurrentHighlight();
   }
 
   @override
   void dispose() {
+    _progressController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _startCurrentHighlight() {
+    _progressController
+      ..stop()
+      ..reset();
+
+    final currentHighlight = widget.highlights[_currentIndex];
+    if (!currentHighlight.isVideo) {
+      _progressController.duration = _photoDisplayDuration;
+      _progressController.forward();
+    }
+  }
+
+  void _handlePageChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    _startCurrentHighlight();
+  }
+
+  void _handleStoryFinished(int index) {
+    if (!mounted || index != _currentIndex) {
+      return;
+    }
+
+    if (_currentIndex >= widget.highlights.length - 1) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    _pageController.nextPage(
+      duration: _pageTransitionDuration,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  void _handleVideoReady(int index, Duration duration) {
+    if (!mounted || index != _currentIndex || duration <= Duration.zero) {
+      return;
+    }
+
+    _progressController
+      ..stop()
+      ..reset()
+      ..duration = duration
+      ..forward();
+  }
+
+  void _handleVideoCompleted(int index) {
+    _handleStoryFinished(index);
   }
 
   @override
@@ -43,13 +107,21 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen> {
           PageView.builder(
             controller: _pageController,
             itemCount: widget.highlights.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
-            },
+            onPageChanged: _handlePageChanged,
             itemBuilder: (context, index) {
-              return _HighlightStoryPage(highlight: widget.highlights[index]);
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _HighlightStoryPage(
+                  key: ValueKey(widget.highlights[index].id),
+                  highlight: widget.highlights[index],
+                  isActive: index == _currentIndex,
+                  onVideoReady:
+                      (duration) => _handleVideoReady(index, duration),
+                  onVideoCompleted: () => _handleVideoCompleted(index),
+                ),
+              );
             },
           ),
           Positioned(
@@ -61,16 +133,33 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen> {
               child: Row(
                 children: List.generate(widget.highlights.length, (index) {
                   final isActive = index == _currentIndex;
+                  final isCompleted = index < _currentIndex;
                   return Expanded(
                     child: Container(
                       height: 3,
                       margin: const EdgeInsets.symmetric(horizontal: 3),
                       decoration: BoxDecoration(
-                        color:
-                            isActive
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.28),
+                        color: Colors.white.withValues(alpha: 0.28),
                         borderRadius: BorderRadius.circular(999),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: AnimatedBuilder(
+                          animation: _progressController,
+                          builder: (context, _) {
+                            final widthFactor =
+                                isCompleted
+                                    ? 1.0
+                                    : isActive
+                                    ? _progressController.value
+                                    : 0.0;
+                            return FractionallySizedBox(
+                              widthFactor: widthFactor.clamp(0.0, 1.0),
+                              child: Container(color: Colors.white),
+                            );
+                          },
+                        ),
                       ),
                     ),
                   );
@@ -135,9 +224,18 @@ class _HighlightStoryScreenState extends State<HighlightStoryScreen> {
 }
 
 class _HighlightStoryPage extends StatefulWidget {
-  const _HighlightStoryPage({required this.highlight});
+  const _HighlightStoryPage({
+    super.key,
+    required this.highlight,
+    required this.isActive,
+    required this.onVideoReady,
+    required this.onVideoCompleted,
+  });
 
   final HighlightItem highlight;
+  final bool isActive;
+  final ValueChanged<Duration> onVideoReady;
+  final VoidCallback onVideoCompleted;
 
   @override
   State<_HighlightStoryPage> createState() => _HighlightStoryPageState();
@@ -153,15 +251,19 @@ class _HighlightStoryPageState extends State<_HighlightStoryPage> {
     if (widget.highlight.isVideo) {
       _videoController =
           VideoPlayerController.networkUrl(Uri.parse(widget.highlight.mediaUrl))
-            ..setLooping(true)
+            ..setLooping(false)
             ..setVolume(1)
             ..initialize()
                 .then((_) {
                   if (!mounted) {
                     return;
                   }
+                  _videoController?.addListener(_handleVideoStateChanged);
                   setState(() {});
-                  _videoController?.play();
+                  widget.onVideoReady(_videoController!.value.duration);
+                  if (widget.isActive) {
+                    _videoController?.play();
+                  }
                 })
                 .catchError((_) {
                   if (!mounted) {
@@ -176,8 +278,44 @@ class _HighlightStoryPageState extends State<_HighlightStoryPage> {
 
   @override
   void dispose() {
+    _videoController?.removeListener(_handleVideoStateChanged);
     _videoController?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HighlightStoryPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.highlight.isVideo) {
+      return;
+    }
+
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+
+    if (widget.isActive && !oldWidget.isActive) {
+      controller
+        ..seekTo(Duration.zero)
+        ..play();
+      widget.onVideoReady(controller.value.duration);
+    } else if (!widget.isActive && oldWidget.isActive) {
+      controller.pause();
+    }
+  }
+
+  void _handleVideoStateChanged() {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized || !widget.isActive) {
+      return;
+    }
+
+    final position = controller.value.position;
+    final duration = controller.value.duration;
+    if (duration > Duration.zero && position >= duration) {
+      widget.onVideoCompleted();
+    }
   }
 
   @override
