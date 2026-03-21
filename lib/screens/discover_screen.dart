@@ -178,7 +178,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       } else if (category.toUpperCase() == 'GENERAL') {
                         cardHeight = 280.0;
                       } else if (category.length > 10) {
-                        cardHeight = 320.0; // Much larger height for wrapping text (e.g. COMPETITIONS)
+                        cardHeight = 280.0; // Standard tall height since text shrinks
                       } else {
                         cardHeight = 220.0;
                       }
@@ -295,20 +295,23 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     left: 8,
                     right: 8,
                     bottom: 16,
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Colors.white, Color(0xFFE28B9B)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ).createShader(bounds),
-                      child: Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
-                          color: Colors.white,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Colors.white, Color(0xFFE28B9B)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ).createShader(bounds),
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
