@@ -192,46 +192,79 @@ class EventDetailsScreen extends StatelessWidget {
 
                   const SizedBox(height: 32),
 
-                  // Prize Pool and Coordinators Row
+                  // Prize Pool, Reg Fee and Coordinators Row
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 100,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1B1B1D),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              event.prizePool.isNotEmpty ? 'PRIZE POOL' : 'REG FEE',
-                              style: const TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  event.prizePool.isNotEmpty 
-                                    ? event.prizePool 
-                                    : (event.regFee.isNotEmpty ? event.regFee : 'FREE'),
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 26),
-                                  textAlign: TextAlign.center,
-                                ),
+                      Column(
+                        children: [
+                          if (event.prizePool.isNotEmpty)
+                            Container(
+                              width: 110,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1B1B1D),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'PRIZE POOL',
+                                    style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        event.prizePool,
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
+                          if (event.prizePool.isNotEmpty) const SizedBox(height: 12),
+                          Container(
+                            width: 110,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1B1B1D),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'REG FEE',
+                                  style: TextStyle(color: Colors.white70, fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      event.regFee.isNotEmpty ? event.regFee : 'TBA',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(width: 20),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
                             const Text(
                               'COORDINATORS',
