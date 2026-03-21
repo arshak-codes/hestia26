@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../widgets/custom_app_bar.dart';
@@ -38,10 +40,8 @@ class _MapScreenState extends State<MapScreen>
     _Venue('Chemical Block', 8.912520993486702, 76.63171856904107),
   ];
 
-  late final AnimationController _pulseController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  )..repeat(reverse: true);
+  late final Future<_SvgAssetData> _svgAssetFuture;
+  late final AnimationController _pulseController;
 
   _Venue? _selectedVenue = _venues[4];
   Position? _currentPosition;
@@ -51,6 +51,11 @@ class _MapScreenState extends State<MapScreen>
   @override
   void initState() {
     super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _svgAssetFuture = _loadSvgAssetData();
     _loadCurrentLocation();
   }
 
@@ -61,6 +66,10 @@ class _MapScreenState extends State<MapScreen>
   }
 
   Future<void> _loadCurrentLocation() async {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _isFetchingLocation = true;
       _locationError = null;
@@ -109,12 +118,15 @@ class _MapScreenState extends State<MapScreen>
 
   @override
   Widget build(BuildContext context) {
-    final startPoint =
+    final mainEntrance = _venues.first;
+    final userPoint =
         _currentPosition != null
             ? _MapPoint(_currentPosition!.latitude, _currentPosition!.longitude)
-            : _selectedVenue != null
-            ? _selectedVenue!.point
-            : _venues.first.point;
+            : null;
+    final hasPreciseLocation =
+        userPoint != null && _campusBounds.contains(userPoint);
+    final usesEntranceStart = !hasPreciseLocation;
+    final startPoint = hasPreciseLocation ? userPoint : mainEntrance.point;
     final destination = _selectedVenue;
 
     return Scaffold(
@@ -124,7 +136,12 @@ class _MapScreenState extends State<MapScreen>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _buildControlPanel(startPoint, destination),
+              child: _buildControlPanel(
+                startPoint,
+                destination,
+                hasPreciseLocation: hasPreciseLocation,
+                usesEntranceStart: usesEntranceStart,
+              ),
             ),
             const SizedBox(height: 14),
             SizedBox(
@@ -167,21 +184,42 @@ class _MapScreenState extends State<MapScreen>
             ),
             const SizedBox(height: 14),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, _) {
-                    return _FantasyMapCard(
-                      bounds: _campusBounds,
-                      venues: _venues,
-                      startPoint: startPoint,
-                      selectedVenue: destination,
-                      pulseValue: _pulseController.value,
-                      hasPreciseLocation: _currentPosition != null,
+              child: FutureBuilder<_SvgAssetData>(
+                future: _svgAssetFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: _MapLoadFallback(),
                     );
-                  },
-                ),
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Center(child: HestiaLoader(label: 'Loading map')),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, _) {
+                        return _CampusSvgMapCard(
+                          svgData: snapshot.data!,
+                          bounds: _campusBounds,
+                          venues: _venues,
+                          startPoint: startPoint,
+                          selectedVenue: destination,
+                          pulseValue: _pulseController.value,
+                          hasPreciseLocation: hasPreciseLocation,
+                          usesEntranceStart: usesEntranceStart,
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -190,13 +228,21 @@ class _MapScreenState extends State<MapScreen>
     );
   }
 
-  Widget _buildControlPanel(_MapPoint startPoint, _Venue? destination) {
-    final hasLocation = _currentPosition != null;
+  Widget _buildControlPanel(
+    _MapPoint startPoint,
+    _Venue? destination, {
+    required bool hasPreciseLocation,
+    required bool usesEntranceStart,
+  }) {
     final subtitle =
-        hasLocation
+        hasPreciseLocation
             ? 'Live position: ${_currentPosition!.latitude.toStringAsFixed(5)}, '
                 '${_currentPosition!.longitude.toStringAsFixed(5)}'
-            : _locationError ?? 'Using the selected venue as the start marker.';
+            : _locationError != null
+            ? '$_locationError Routing starts from Main Entrance.'
+            : _currentPosition != null
+            ? 'Outside campus bounds. Routing starts from Main Entrance.'
+            : 'Using Main Entrance as the start marker.';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -212,7 +258,7 @@ class _MapScreenState extends State<MapScreen>
             children: [
               const Expanded(
                 child: Text(
-                  'Realm Navigator',
+                  'Campus Navigator',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,
@@ -252,7 +298,7 @@ class _MapScreenState extends State<MapScreen>
               Expanded(
                 child: _RouteLegend(
                   title: 'Start',
-                  value: hasLocation ? 'Your location' : 'Fallback marker',
+                  value: hasPreciseLocation ? 'Your location' : 'Main Entrance',
                   color: const Color(0xFF5EEAD4),
                 ),
               ),
@@ -268,135 +314,188 @@ class _MapScreenState extends State<MapScreen>
           ),
           const SizedBox(height: 14),
           Text(
-            'Projected from ${startPoint.latitude.toStringAsFixed(5)}, '
-            '${startPoint.longitude.toStringAsFixed(5)} into campus fantasy space.',
+            'Anchored to the TKMCE campus map from '
+            '${startPoint.latitude.toStringAsFixed(5)}, '
+            '${startPoint.longitude.toStringAsFixed(5)}.',
             style: const TextStyle(color: Colors.white38, fontSize: 11),
           ),
         ],
       ),
     );
   }
+
+  Future<_SvgAssetData> _loadSvgAssetData() async {
+    final rawSvg = await rootBundle.loadString('assets/Frame 1.svg');
+    try {
+      return _SvgAssetData.fromSvg(rawSvg);
+    } catch (_) {
+      return _SvgAssetData.fallback(rawSvg);
+    }
+  }
 }
 
-class _FantasyMapCard extends StatelessWidget {
-  const _FantasyMapCard({
+class _CampusSvgMapCard extends StatelessWidget {
+  const _CampusSvgMapCard({
+    required this.svgData,
     required this.bounds,
     required this.venues,
     required this.startPoint,
     required this.selectedVenue,
     required this.pulseValue,
     required this.hasPreciseLocation,
+    required this.usesEntranceStart,
   });
 
+  final _SvgAssetData svgData;
   final _CampusBounds bounds;
   final List<_Venue> venues;
   final _MapPoint startPoint;
   final _Venue? selectedVenue;
   final double pulseValue;
   final bool hasPreciseLocation;
+  final bool usesEntranceStart;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = Size(constraints.maxWidth, constraints.maxHeight);
-        final routeTarget = selectedVenue?.point;
-        final projectedStart = bounds.project(startPoint, size);
-        final projectedEnd =
-            routeTarget != null ? bounds.project(routeTarget, size) : null;
+    final routeTarget = selectedVenue?.point;
+    final buildingId = _buildingIdForVenue(selectedVenue?.name);
+    final overlaySvg = svgData.buildBuildingOverlaySvg(buildingId: buildingId);
 
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0x33F3D3A2)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x22000000),
-                blurRadius: 26,
-                offset: Offset(0, 20),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E0E11),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 26,
+            offset: Offset(0, 20),
           ),
-          clipBehavior: Clip.hardEdge,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _FantasyMapPainter(
-                    bounds: bounds,
-                    venues: venues,
-                    startPoint: startPoint,
-                    selectedVenue: selectedVenue,
-                    pulseValue: pulseValue,
-                    hasPreciseLocation: hasPreciseLocation,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 18,
-                left: 18,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xB219120D),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0x55F5D7A5)),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'KINGDOM OF HESTIA',
-                        style: TextStyle(
-                          color: Color(0xFFF6E3B4),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.4,
-                          fontSize: 12,
+        ],
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 4,
+              boundaryMargin: const EdgeInsets.all(24),
+              child: AspectRatio(
+                aspectRatio: _CampusBounds.svgWidth / _CampusBounds.svgHeight,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = Size(
+                      constraints.maxWidth,
+                      constraints.maxHeight,
+                    );
+                    final projectedStart = bounds.project(startPoint, size);
+                    final projectedEnd =
+                        routeTarget != null
+                            ? bounds.project(routeTarget, size)
+                            : null;
+
+                    return Stack(
+                      children: [
+                        Positioned.fill(
+                          child: SvgPicture.string(
+                            svgData.rawSvg,
+                            fit: BoxFit.cover,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Fantasy routing over real campus GPS',
-                        style: TextStyle(
-                          color: Color(0xFFD0B98B),
-                          fontSize: 11,
+                        if (overlaySvg != null)
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: SvgPicture.string(
+                                overlaySvg,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        Positioned.fill(
+                          child: CustomPaint(
+                            painter: _CampusMarkerPainter(
+                              bounds: bounds,
+                              startPoint: startPoint,
+                              selectedVenue: selectedVenue,
+                              pulseValue: pulseValue,
+                              hasPreciseLocation: hasPreciseLocation,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                        Positioned(
+                          top: 18,
+                          left: 18,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.66),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'TKMCE CAMPUS MAP',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.2,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  usesEntranceStart
+                                      ? 'Starting from Main Entrance'
+                                      : 'Pinch to zoom and inspect venues',
+                                  style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (projectedEnd != null)
+                          Positioned(
+                            right: 18,
+                            bottom: 18,
+                            child: _CompassLegend(
+                              distanceLabel: _distanceLabel(
+                                startPoint,
+                                selectedVenue!.point,
+                              ),
+                            ),
+                          ),
+                        _MapLabel(
+                          offset: projectedStart,
+                          title: hasPreciseLocation ? 'YOU' : 'START',
+                          color: const Color(0xFF5EEAD4),
+                          alignRight: false,
+                        ),
+                        if (selectedVenue != null && projectedEnd != null)
+                          _MapLabel(
+                            offset: projectedEnd,
+                            title: selectedVenue!.name.toUpperCase(),
+                            color: const Color(0xFFE28B9B),
+                            alignRight: projectedEnd.dx > size.width * 0.62,
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
-              if (projectedEnd != null)
-                Positioned(
-                  right: 18,
-                  bottom: 18,
-                  child: _CompassLegend(
-                    distanceLabel: _distanceLabel(
-                      startPoint,
-                      selectedVenue!.point,
-                    ),
-                  ),
-                ),
-              _MapLabel(
-                offset: projectedStart,
-                title: hasPreciseLocation ? 'YOU' : 'START',
-                color: const Color(0xFF5EEAD4),
-                alignRight: false,
-              ),
-              if (selectedVenue != null && projectedEnd != null)
-                _MapLabel(
-                  offset: projectedEnd,
-                  title: selectedVenue!.name.toUpperCase(),
-                  color: const Color(0xFFE28B9B),
-                  alignRight: true,
-                ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
@@ -412,12 +511,26 @@ class _FantasyMapCard extends StatelessWidget {
     }
     return '${(distance / 1000).toStringAsFixed(2)} km';
   }
+
+  String? _buildingIdForVenue(String? venueName) {
+    switch ((venueName ?? '').toLowerCase()) {
+      case 'architecture block':
+        return 'Architecture block';
+      case 'workshop block':
+        return 'Workshop block';
+      case 'chemical block':
+        return 'chemical block';
+      case 'auditorium':
+        return 'Auditorium';
+      default:
+        return null;
+    }
+  }
 }
 
-class _FantasyMapPainter extends CustomPainter {
-  const _FantasyMapPainter({
+class _CampusMarkerPainter extends CustomPainter {
+  const _CampusMarkerPainter({
     required this.bounds,
-    required this.venues,
     required this.startPoint,
     required this.selectedVenue,
     required this.pulseValue,
@@ -425,7 +538,6 @@ class _FantasyMapPainter extends CustomPainter {
   });
 
   final _CampusBounds bounds;
-  final List<_Venue> venues;
   final _MapPoint startPoint;
   final _Venue? selectedVenue;
   final double pulseValue;
@@ -433,191 +545,56 @@ class _FantasyMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final background =
-        Paint()
-          ..shader = const LinearGradient(
-            colors: [Color(0xFFF0D8A8), Color(0xFFE0BB7B), Color(0xFFC89253)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, background);
-
-    _paintPaperTexture(canvas, size);
-    _paintFantasyTerrain(canvas, size);
-    _paintVenueNetwork(canvas, size);
-    _paintRoute(canvas, size);
-    _paintVenueMarkers(canvas, size);
-  }
-
-  void _paintPaperTexture(Canvas canvas, Size size) {
-    final borderPaint =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..color = const Color(0x806D4B2B);
-    final frame = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      const Radius.circular(28),
-    );
-    canvas.drawRRect(frame, borderPaint);
-
-    final texture =
-        Paint()
-          ..color = const Color(0x1A4D3319)
-          ..strokeWidth = 1.2;
-    for (var i = 0; i < 16; i++) {
-      final y = size.height * (i / 15);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y + 12), texture);
-    }
-  }
-
-  void _paintFantasyTerrain(Canvas canvas, Size size) {
-    final hillPaint =
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = const Color(0x665F3D22);
-    final accentPaint =
-        Paint()
-          ..color = const Color(0x338A5D2B)
-          ..style = PaintingStyle.fill;
-
-    final hillCenters = [
-      Offset(size.width * 0.18, size.height * 0.22),
-      Offset(size.width * 0.72, size.height * 0.18),
-      Offset(size.width * 0.28, size.height * 0.72),
-      Offset(size.width * 0.8, size.height * 0.68),
-    ];
-
-    for (final center in hillCenters) {
-      for (var ring = 1; ring <= 3; ring++) {
-        canvas.drawOval(
-          Rect.fromCenter(
-            center: center,
-            width: 80.0 * ring,
-            height: 48.0 * ring,
-          ),
-          hillPaint,
-        );
-      }
-      canvas.drawCircle(center, 18, accentPaint);
-    }
-
-    final riverPath =
-        Path()
-          ..moveTo(size.width * 0.1, size.height * 0.05)
-          ..quadraticBezierTo(
-            size.width * 0.28,
-            size.height * 0.18,
-            size.width * 0.22,
-            size.height * 0.36,
-          )
-          ..quadraticBezierTo(
-            size.width * 0.14,
-            size.height * 0.58,
-            size.width * 0.3,
-            size.height * 0.92,
-          );
-    canvas.drawPath(
-      riverPath,
-      Paint()
-        ..color = const Color(0x6654A4C7)
-        ..strokeWidth = 12
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  void _paintVenueNetwork(Canvas canvas, Size size) {
-    final routePaint =
-        Paint()
-          ..color = const Color(0x665E3D22)
-          ..strokeWidth = 2
-          ..style = PaintingStyle.stroke;
-
-    for (var i = 0; i < venues.length - 1; i++) {
-      final start = bounds.project(venues[i].point, size);
-      final end = bounds.project(venues[i + 1].point, size);
-      canvas.drawLine(start, end, routePaint);
-    }
-  }
-
-  void _paintRoute(Canvas canvas, Size size) {
-    if (selectedVenue == null) {
-      return;
-    }
-
-    final start = bounds.project(startPoint, size);
-    final end = bounds.project(selectedVenue!.point, size);
-    final midpoint = Offset(
-      (start.dx + end.dx) / 2 + 36,
-      (start.dy + end.dy) / 2 - 42,
-    );
-
-    final path =
-        Path()
-          ..moveTo(start.dx, start.dy)
-          ..quadraticBezierTo(midpoint.dx, midpoint.dy, end.dx, end.dy);
-
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0x99B03A48)
-        ..strokeWidth = 10
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFFFF2C0)
-        ..strokeWidth = 4
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  void _paintVenueMarkers(Canvas canvas, Size size) {
-    final markerPaint = Paint()..color = const Color(0xFF5E3D22);
-    final selectedPaint = Paint()..color = const Color(0xFFB03A48);
-    final youPaint = Paint()..color = const Color(0xFF0F766E);
-
-    for (final venue in venues) {
-      final point = bounds.project(venue.point, size);
-      final isSelected = venue == selectedVenue;
-      canvas.drawCircle(
-        point,
-        isSelected ? 8 : 6,
-        isSelected ? selectedPaint : markerPaint,
-      );
-      canvas.drawCircle(
-        point,
-        isSelected ? 14 : 10,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5
-          ..color = (isSelected ? selectedPaint : markerPaint).color.withValues(
-            alpha: 0.45,
-          ),
-      );
-    }
+    final markerPaint = Paint()..color = Colors.white.withValues(alpha: 0.78);
+    final selectedPaint = Paint()..color = const Color(0xFFE28B9B);
+    final youPaint = Paint()..color = const Color(0xFF5EEAD4);
 
     final current = bounds.project(startPoint, size);
-    final pulseRadius = 16 + (pulseValue * 14);
+    final pulseRadius = 10 + (pulseValue * 12);
     canvas.drawCircle(
       current,
       pulseRadius,
       Paint()..color = const Color(0x445EEAD4),
     );
     canvas.drawCircle(current, 8, hasPreciseLocation ? youPaint : markerPaint);
+
+    if (selectedVenue != null) {
+      final point = bounds.project(selectedVenue!.point, size);
+      canvas.drawCircle(point, 7, selectedPaint);
+      canvas.drawCircle(
+        point,
+        12,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = selectedPaint.color.withValues(alpha: 0.45),
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _FantasyMapPainter oldDelegate) {
+  bool shouldRepaint(covariant _CampusMarkerPainter oldDelegate) {
     return oldDelegate.startPoint != startPoint ||
         oldDelegate.selectedVenue != selectedVenue ||
         oldDelegate.pulseValue != pulseValue ||
         oldDelegate.hasPreciseLocation != hasPreciseLocation;
+  }
+}
+
+class _MapLoadFallback extends StatelessWidget {
+  const _MapLoadFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E0E11),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white12),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: SvgPicture.asset('assets/Frame 1.svg', fit: BoxFit.cover),
+    );
   }
 }
 
@@ -636,28 +613,33 @@ class _MapLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final left = alignRight ? null : math.max(8.0, offset.dx - 8).toDouble();
-    final right = alignRight ? 8.0 : null;
-    final top = math.max(14.0, offset.dy - 34).toDouble();
+    final left = alignRight ? null : math.max(10.0, offset.dx - 18).toDouble();
+    final right = alignRight ? 10.0 : null;
+    final top = math.max(14.0, offset.dy - 38).toDouble();
 
     return Positioned(
       left: left,
       right: right,
       top: top,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.62),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.65)),
-        ),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 172),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.62),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.65)),
+          ),
+          child: Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.1,
+            ),
           ),
         ),
       ),
@@ -683,7 +665,7 @@ class _CompassLegend extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Quest Span',
+            'Distance',
             style: TextStyle(
               color: Color(0xFFF6E3B4),
               fontWeight: FontWeight.w700,
@@ -766,15 +748,43 @@ class _CampusBounds {
     required this.west,
   });
 
+  static const double svgWidth = 717;
+  static const double svgHeight = 1246;
+  static const double mapLeft = 87;
+  static const double mapTop = 188;
+  static const double mapRight = 630;
+  static const double mapBottom = 1001;
+
   final double north;
   final double east;
   final double south;
   final double west;
 
   Offset project(_MapPoint point, Size size) {
+    return projectSvg(projectToSvg(point), size);
+  }
+
+  Offset projectSvg(_SvgPoint point, Size size) {
+    return Offset(
+      (point.x / svgWidth) * size.width,
+      (point.y / svgHeight) * size.height,
+    );
+  }
+
+  bool contains(_MapPoint point) {
+    return point.latitude <= north &&
+        point.latitude >= south &&
+        point.longitude >= west &&
+        point.longitude <= east;
+  }
+
+  _SvgPoint projectToSvg(_MapPoint point) {
     final x = ((point.longitude - west) / (east - west)).clamp(0.0, 1.0);
     final y = ((north - point.latitude) / (north - south)).clamp(0.0, 1.0);
-    return Offset(24 + (size.width - 48) * x, 24 + (size.height - 48) * y);
+    return _SvgPoint(
+      mapLeft + (mapRight - mapLeft) * x,
+      mapTop + (mapBottom - mapTop) * y,
+    );
   }
 }
 
@@ -791,4 +801,395 @@ class _Venue {
 
   final String name;
   final _MapPoint point;
+}
+
+class _SvgPoint {
+  const _SvgPoint(this.x, this.y);
+
+  final double x;
+  final double y;
+
+  String get key => '${x.toStringAsFixed(3)},${y.toStringAsFixed(3)}';
+
+  double distanceTo(_SvgPoint other) {
+    final dx = x - other.x;
+    final dy = y - other.y;
+    return math.sqrt((dx * dx) + (dy * dy));
+  }
+}
+
+class _SvgAssetData {
+  const _SvgAssetData({
+    required this.rawSvg,
+    required this.pathById,
+    required this.routeNetwork,
+  });
+
+  final String rawSvg;
+  final Map<String, String> pathById;
+  final _RouteNetwork routeNetwork;
+
+  factory _SvgAssetData.fromSvg(String rawSvg) {
+    final pathById = <String, String>{};
+    final regex = RegExp(r'<path[^>]*id="([^"]+)"[^>]*d="([^"]+)"[^>]*/?>');
+    for (final match in regex.allMatches(rawSvg)) {
+      final id = match.group(1);
+      final d = match.group(2);
+      if (id != null && d != null) {
+        pathById[id] = d;
+      }
+    }
+    return _SvgAssetData(
+      rawSvg: rawSvg,
+      pathById: pathById,
+      routeNetwork: _RouteNetwork.fromPathMap(
+        Map.fromEntries(
+          pathById.entries.where(
+            (entry) => entry.key.toLowerCase().contains('route'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  factory _SvgAssetData.fallback(String rawSvg) {
+    return const _SvgAssetData(
+      rawSvg: '',
+      pathById: {},
+      routeNetwork: _RouteNetwork(nodes: {}, edges: {}, segments: []),
+    ).copyWithRawSvg(rawSvg);
+  }
+
+  List<List<_SvgPoint>> buildHighlightPolylines({
+    required _SvgPoint startPoint,
+    required _SvgPoint? destinationPoint,
+    required List<String> fallbackRouteIds,
+  }) {
+    if (destinationPoint != null) {
+      final routePoints = routeNetwork.buildPathPoints(
+        startPoint,
+        destinationPoint,
+      );
+      if (routePoints.length >= 2) {
+        return [routePoints];
+      }
+    }
+
+    final polylines = <List<_SvgPoint>>[];
+    for (final routeId in fallbackRouteIds) {
+      final path = pathById[routeId];
+      if (path == null || path.isEmpty) {
+        continue;
+      }
+      polylines.addAll(_RouteNetwork.parseSvgSubpaths(path));
+    }
+    return polylines;
+  }
+
+  String? buildBuildingOverlaySvg({required String? buildingId}) {
+    final buffer =
+        StringBuffer()..writeln(
+          '<svg width="717" height="1246" viewBox="0 0 717 1246" fill="none" xmlns="http://www.w3.org/2000/svg">',
+        );
+    var hasContent = false;
+    if (buildingId != null) {
+      final buildingPath = pathById[buildingId];
+      if (buildingPath != null) {
+        hasContent = true;
+        buffer.writeln(
+          '<path d="$buildingPath" fill="#E28B9B" fill-opacity="0.16" stroke="#E28B9B" stroke-width="3"/>',
+        );
+      }
+    }
+
+    buffer.writeln('</svg>');
+    return hasContent ? buffer.toString() : null;
+  }
+
+  _SvgAssetData copyWithRawSvg(String rawSvg) {
+    return _SvgAssetData(
+      rawSvg: rawSvg,
+      pathById: pathById,
+      routeNetwork: routeNetwork,
+    );
+  }
+}
+
+class _RouteNetwork {
+  const _RouteNetwork({
+    required this.nodes,
+    required this.edges,
+    required this.segments,
+  });
+
+  final Map<String, _SvgPoint> nodes;
+  final Map<String, List<_RouteEdge>> edges;
+  final List<_RouteSegment> segments;
+
+  factory _RouteNetwork.fromPathMap(Map<String, String> pathById) {
+    final nodes = <String, _SvgPoint>{};
+    final edges = <String, List<_RouteEdge>>{};
+    final segments = <_RouteSegment>[];
+
+    String nodeIdFor(_SvgPoint point) {
+      final key = point.key;
+      nodes.putIfAbsent(key, () => point);
+      edges.putIfAbsent(key, () => <_RouteEdge>[]);
+      return key;
+    }
+
+    for (final d in pathById.values) {
+      final subpaths = parseSvgSubpaths(d);
+      for (final subpath in subpaths) {
+        for (var i = 0; i < subpath.length - 1; i++) {
+          final start = subpath[i];
+          final end = subpath[i + 1];
+          final startId = nodeIdFor(start);
+          final endId = nodeIdFor(end);
+          final distance = start.distanceTo(end);
+          segments.add(
+            _RouteSegment(
+              startId: startId,
+              endId: endId,
+              start: start,
+              end: end,
+            ),
+          );
+          edges[startId]!.add(_RouteEdge(endId, distance));
+          edges[endId]!.add(_RouteEdge(startId, distance));
+        }
+      }
+    }
+
+    return _RouteNetwork(nodes: nodes, edges: edges, segments: segments);
+  }
+
+  List<_SvgPoint> buildPathPoints(
+    _SvgPoint startPoint,
+    _SvgPoint destinationPoint,
+  ) {
+    if (segments.isEmpty) {
+      return const [];
+    }
+
+    final startAnchor = _nearestAnchor(startPoint, 'start');
+    final endAnchor = _nearestAnchor(destinationPoint, 'end');
+    final graphNodes = <String, _SvgPoint>{...nodes};
+    final graphEdges = <String, List<_RouteEdge>>{
+      for (final entry in edges.entries)
+        entry.key: List<_RouteEdge>.from(entry.value),
+    };
+
+    void attachAnchor(_Anchor anchor) {
+      graphNodes[anchor.id] = anchor.point;
+      graphEdges.putIfAbsent(anchor.id, () => <_RouteEdge>[]);
+
+      final toStart = anchor.point.distanceTo(anchor.segment.start);
+      final toEnd = anchor.point.distanceTo(anchor.segment.end);
+
+      graphEdges[anchor.id]!.add(_RouteEdge(anchor.segment.startId, toStart));
+      graphEdges[anchor.id]!.add(_RouteEdge(anchor.segment.endId, toEnd));
+      graphEdges[anchor.segment.startId]!.add(_RouteEdge(anchor.id, toStart));
+      graphEdges[anchor.segment.endId]!.add(_RouteEdge(anchor.id, toEnd));
+    }
+
+    attachAnchor(startAnchor);
+    attachAnchor(endAnchor);
+
+    if (startAnchor.segment.sameAs(endAnchor.segment)) {
+      final directDistance = startAnchor.point.distanceTo(endAnchor.point);
+      graphEdges[startAnchor.id]!.add(_RouteEdge(endAnchor.id, directDistance));
+      graphEdges[endAnchor.id]!.add(_RouteEdge(startAnchor.id, directDistance));
+    }
+
+    final nodePath = _shortestPath(
+      startAnchor.id,
+      endAnchor.id,
+      graphNodes.keys,
+      graphEdges,
+    );
+    if (nodePath.isEmpty) {
+      return const [];
+    }
+
+    final points = <_SvgPoint>[];
+    for (var i = 0; i < nodePath.length; i++) {
+      final point = graphNodes[nodePath[i]];
+      if (point == null) {
+        continue;
+      }
+      if (points.isEmpty || points.last.key != point.key) {
+        points.add(point);
+      }
+    }
+    return points;
+  }
+
+  _Anchor _nearestAnchor(_SvgPoint point, String prefix) {
+    var bestDistance = double.infinity;
+    _RouteSegment? bestSegment;
+    _SvgPoint? bestProjection;
+
+    for (final segment in segments) {
+      final projection = segment.project(point);
+      final distance = point.distanceTo(projection);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestSegment = segment;
+        bestProjection = projection;
+      }
+    }
+
+    return _Anchor(
+      id: '$prefix-${bestProjection!.key}',
+      point: bestProjection,
+      segment: bestSegment!,
+    );
+  }
+
+  static List<String> _shortestPath(
+    String startId,
+    String endId,
+    Iterable<String> nodeIds,
+    Map<String, List<_RouteEdge>> edges,
+  ) {
+    final distances = <String, double>{
+      for (final id in nodeIds) id: double.infinity,
+    };
+    final previous = <String, String?>{};
+    final unvisited = nodeIds.toSet();
+    distances[startId] = 0;
+
+    while (unvisited.isNotEmpty) {
+      String? current;
+      var minDistance = double.infinity;
+
+      for (final id in unvisited) {
+        final distance = distances[id] ?? double.infinity;
+        if (distance < minDistance) {
+          minDistance = distance;
+          current = id;
+        }
+      }
+
+      if (current == null || minDistance == double.infinity) {
+        break;
+      }
+
+      unvisited.remove(current);
+      if (current == endId) {
+        break;
+      }
+
+      for (final edge in edges[current] ?? const <_RouteEdge>[]) {
+        if (!unvisited.contains(edge.toId)) {
+          continue;
+        }
+
+        final alternative =
+            (distances[current] ?? double.infinity) + edge.distance;
+        if (alternative < (distances[edge.toId] ?? double.infinity)) {
+          distances[edge.toId] = alternative;
+          previous[edge.toId] = current;
+        }
+      }
+    }
+
+    final path = <String>[];
+    String? cursor = endId;
+    while (cursor != null) {
+      path.insert(0, cursor);
+      if (cursor == startId) {
+        return path;
+      }
+      cursor = previous[cursor];
+    }
+
+    return const <String>[];
+  }
+
+  static List<List<_SvgPoint>> parseSvgSubpaths(String d) {
+    final tokens =
+        RegExp(
+          r'[ML]|-?\d+(?:\.\d+)?',
+        ).allMatches(d).map((match) => match.group(0)!).toList();
+    final subpaths = <List<_SvgPoint>>[];
+    String? command;
+    var index = 0;
+
+    while (index < tokens.length) {
+      final token = tokens[index];
+      if (token == 'M' || token == 'L') {
+        command = token;
+        index++;
+        continue;
+      }
+
+      if (command == null || index + 1 >= tokens.length) {
+        break;
+      }
+
+      final point = _SvgPoint(
+        double.parse(tokens[index]),
+        double.parse(tokens[index + 1]),
+      );
+      if (command == 'M' || subpaths.isEmpty) {
+        subpaths.add([point]);
+        command = 'L';
+      } else {
+        subpaths.last.add(point);
+      }
+      index += 2;
+    }
+
+    return subpaths.where((subpath) => subpath.length > 1).toList();
+  }
+}
+
+class _RouteEdge {
+  const _RouteEdge(this.toId, this.distance);
+
+  final String toId;
+  final double distance;
+}
+
+class _RouteSegment {
+  const _RouteSegment({
+    required this.startId,
+    required this.endId,
+    required this.start,
+    required this.end,
+  });
+
+  final String startId;
+  final String endId;
+  final _SvgPoint start;
+  final _SvgPoint end;
+
+  _SvgPoint project(_SvgPoint point) {
+    final dx = end.x - start.x;
+    final dy = end.y - start.y;
+    final lengthSquared = (dx * dx) + (dy * dy);
+    if (lengthSquared == 0) {
+      return start;
+    }
+    final t =
+        (((point.x - start.x) * dx) + ((point.y - start.y) * dy)) /
+        lengthSquared;
+    final clamped = t.clamp(0.0, 1.0);
+    return _SvgPoint(start.x + (dx * clamped), start.y + (dy * clamped));
+  }
+
+  bool sameAs(_RouteSegment other) {
+    return (startId == other.startId && endId == other.endId) ||
+        (startId == other.endId && endId == other.startId);
+  }
+}
+
+class _Anchor {
+  const _Anchor({required this.id, required this.point, required this.segment});
+
+  final String id;
+  final _SvgPoint point;
+  final _RouteSegment segment;
 }
