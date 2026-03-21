@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
@@ -37,11 +39,35 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   late Future<Map<String, List<Event>>> _eventsFuture;
   final SliderService _sliderService = SliderService();
+  late final PageController _sliderPageController;
+  Timer? _sliderTimer;
+  int _currentSliderIndex = 0;
+  int _sliderCount = 0;
 
   @override
   void initState() {
     super.initState();
+    _sliderPageController = PageController(viewportFraction: 0.95);
     _eventsFuture = ApiService().fetchAndGroupEvents();
+    _sliderTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted || !_sliderPageController.hasClients || _sliderCount <= 1) {
+        return;
+      }
+
+      final nextPage = (_currentSliderIndex + 1) % _sliderCount;
+      _sliderPageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _sliderTimer?.cancel();
+    _sliderPageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -71,6 +97,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 }
 
                 final sliderImages = snapshot.data!;
+                _sliderCount = sliderImages.length;
+                if (_currentSliderIndex >= _sliderCount) {
+                  _currentSliderIndex = 0;
+                }
+
                 if (sliderImages.isEmpty) {
                   return const SizedBox(
                     height: 180,
@@ -98,7 +129,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       child: SizedBox(
                         height: 180,
                         child: PageView.builder(
-                          controller: PageController(viewportFraction: 0.95),
+                          controller: _sliderPageController,
+                          onPageChanged: (index) {
+                            _currentSliderIndex = index;
+                          },
                           itemCount: sliderImages.length,
                           itemBuilder: (context, index) {
                             final sliderImage = sliderImages[index];
